@@ -1,18 +1,21 @@
 const mongoose = require("mongoose");
+const ledgerModel = require("../Models/leadger.account");
 
 const accountSchema = new mongoose.Schema({
     user:{
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "user",
         required: [true, "User is required"],
         index: true
     },
     status:{
         type: String,
         enum: {
-            values: ["active", "inactive","FROZEN"],
-            message: "Status must be either 'active' or 'inactive' or 'FROZEN'"
-        }
+            values: ["ACTIVE", "INACTIVE","FROZEN"],
+            message: "Status must be either 'ACTIVE' or 'INACTIVE' or 'FROZEN'",
+        },
+        default: "ACTIVE"
+
     },
     currency:{
         type: String,
@@ -24,6 +27,49 @@ const accountSchema = new mongoose.Schema({
 })
 
 accountSchema.index({ user: 1, status: 1 })
+
+accountSchema.methods.getBalance = async function () {
+
+    const balanceData = await ledgerModel.aggregate([
+        { $match: { account: this._id } },
+        {
+            $group: {
+                _id: null,
+                totalDebit: {
+                    $sum: {
+                        $cond: [
+                            { $eq: [ "$type", "DEBIT" ] },
+                            "$amount",
+                            0
+                        ]
+                    }
+                },
+                totalCredit: {
+                    $sum: {
+                        $cond: [
+                            { $eq: [ "$type", "CREDIT" ] },
+                            "$amount",
+                            0
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            $project: {
+                _id: 0,
+                balance: { $subtract: [ "$totalCredit", "$totalDebit" ] }
+            }
+        }
+    ])
+
+    if (balanceData.length === 0) {
+        return 0
+    }
+
+    return balanceData[ 0 ].balance
+
+}
 
 const AccountModel = mongoose.model("account", accountSchema);
 
