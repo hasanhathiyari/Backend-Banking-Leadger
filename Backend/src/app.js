@@ -11,6 +11,8 @@ const app = express();
  */
 const authRoutes = require("./Routes/auth.routes");
 const accountRoutes = require("./Routes/account.routes");
+const transactionRoutes = require("./Routes/transction.routes");
+
 
 app.use(express.json());
 app.use(CookieParser());
@@ -20,6 +22,7 @@ app.use(CookieParser());
  */
 app.use("/api/users",authRoutes);
 app.use("/api/account",accountRoutes);
+app.use("/api/transaction",transactionRoutes);  
 
 
 
